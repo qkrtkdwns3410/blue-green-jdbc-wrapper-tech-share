@@ -1,0 +1,1238 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blue/Green 전환과 JDBC Wrapper - 주니어 대상 기술공유</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #050505;
+      --text: #242424;
+      --muted: #62666d;
+      --line: #d8dce2;
+      --soft: #f7f7f8;
+      --blue: #002fa7;
+      --green: #00875a;
+      --red: #d12f2f;
+      --yellow: #9b6a00;
+      --surface: #ffffff;
+      --sans: "Helvetica Neue", Helvetica, Arial, "Noto Sans KR", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background: #ffffff;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(216, 220, 226, 0.62) 1px, transparent 1px) 0 0 / 92px 92px,
+        linear-gradient(180deg, rgba(216, 220, 226, 0.42) 1px, transparent 1px) 0 0 / 92px 92px,
+        #ffffff;
+      font-family: var(--sans);
+      line-height: 1.66;
+      word-break: keep-all;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code {
+      padding: 0.06rem 0.28rem;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--blue);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.92em;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .progress {
+      position: fixed;
+      inset: 0 0 auto;
+      z-index: 20;
+      height: 4px;
+      border-bottom: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    .progress span {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: var(--blue);
+    }
+
+    .skip {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 30;
+      transform: translateY(-150%);
+      padding: 10px 14px;
+      background: var(--ink);
+      color: #ffffff;
+      font-weight: 900;
+    }
+
+    .skip:focus {
+      transform: translateY(0);
+    }
+
+    main {
+      width: min(1180px, calc(100% - 44px));
+      margin: 0 auto;
+      padding: 30px 0 96px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.74fr);
+      gap: 38px;
+      align-items: end;
+      min-height: min(720px, calc(100vh - 30px));
+      padding: 84px 0 28px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 9px 12px;
+      border: 1px solid var(--ink);
+      background: #ffffff;
+      font-size: 0.92rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 820px;
+      margin: 24px 0 18px;
+      font-size: clamp(3rem, 7.2vw, 7.2rem);
+      line-height: 0.96;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 0;
+      padding-left: 18px;
+      border-left: 8px solid var(--blue);
+      color: var(--text);
+      font-size: clamp(1.08rem, 1.8vw, 1.34rem);
+    }
+
+    .hero-card {
+      border: 1px solid var(--ink);
+      border-top: 8px solid var(--blue);
+      background: #ffffff;
+    }
+
+    .hero-card-row {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 16px;
+      align-items: center;
+      min-height: 118px;
+      padding: 18px;
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .hero-card-row:last-child {
+      border-bottom: 0;
+    }
+
+    .hero-card-row b {
+      color: var(--blue);
+      font-size: 3.8rem;
+      line-height: 0.86;
+    }
+
+    .hero-card-row span {
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    .dock {
+      position: sticky;
+      top: 4px;
+      z-index: 15;
+      margin: 18px 0 44px;
+      padding: 10px;
+      border: 1px solid var(--ink);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+      overflow-x: auto;
+    }
+
+    .dock-inner {
+      display: flex;
+      gap: 8px;
+    }
+
+    .dock a {
+      flex: 0 0 auto;
+      min-height: 42px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--ink);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .dock a.active {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #ffffff;
+    }
+
+    section {
+      scroll-margin-top: 96px;
+      margin: 54px 0 88px;
+      padding-top: 28px;
+      border-top: 1px solid var(--ink);
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+      margin-bottom: 24px;
+    }
+
+    .num {
+      color: var(--blue);
+      font-size: clamp(3.5rem, 8vw, 6.8rem);
+      font-weight: 950;
+      line-height: 0.86;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 4.2vw, 4rem);
+      line-height: 1.06;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+
+    .section-lead {
+      max-width: 780px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.08rem;
+    }
+
+    .poster {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    .poster-cell {
+      min-height: 260px;
+      padding: 24px;
+      border-right: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .poster-cell:nth-child(3n) {
+      border-right: 0;
+    }
+
+    .poster-cell:nth-last-child(-n + 3) {
+      border-bottom: 0;
+    }
+
+    .poster-cell.wide {
+      grid-column: span 2;
+    }
+
+    .label {
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 5px 8px;
+      border: 1px solid var(--ink);
+      background: #ffffff;
+      color: var(--ink);
+      font-size: 0.86rem;
+      font-weight: 900;
+    }
+
+    .big {
+      display: block;
+      margin: 0 0 12px;
+      font-size: clamp(2.1rem, 4.5vw, 4rem);
+      line-height: 0.98;
+      font-weight: 950;
+    }
+
+    .desc {
+      margin: 0;
+      color: var(--text);
+      font-size: 1.02rem;
+    }
+
+    .blue-text {
+      color: var(--blue);
+    }
+
+    .green-text {
+      color: var(--green);
+    }
+
+    .red-text {
+      color: var(--red);
+    }
+
+    .scene {
+      display: grid;
+      grid-template-columns: minmax(170px, 0.7fr) minmax(0, 1fr) minmax(170px, 0.7fr);
+      gap: 16px;
+      align-items: center;
+      margin: 28px 0;
+    }
+
+    .box {
+      min-height: 136px;
+      padding: 18px;
+      border: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    .box h3 {
+      margin: 0 0 8px;
+      font-size: 1.28rem;
+      line-height: 1.2;
+    }
+
+    .box p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .box.blue {
+      border-top: 8px solid var(--blue);
+    }
+
+    .box.green {
+      border-top: 8px solid var(--green);
+    }
+
+    .box.warning {
+      border-top: 8px solid var(--red);
+    }
+
+    .route {
+      display: grid;
+      gap: 12px;
+    }
+
+    .route-line {
+      padding: 14px;
+      border: 1px solid var(--ink);
+      background: #ffffff;
+      text-align: center;
+      font-weight: 900;
+    }
+
+    .route-line.primary {
+      background: var(--blue);
+      color: #ffffff;
+      border-color: var(--blue);
+    }
+
+    .why-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .why-item {
+      padding: 18px;
+      border: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    .why-item strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--blue);
+      font-size: 1.12rem;
+      line-height: 1.22;
+    }
+
+    .why-item p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      border: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    .step {
+      min-height: 280px;
+      padding: 20px;
+      border-right: 1px solid var(--ink);
+    }
+
+    .step:last-child {
+      border-right: 0;
+    }
+
+    .step .phase {
+      display: inline-block;
+      margin-bottom: 14px;
+      padding: 5px 8px;
+      border: 1px solid var(--ink);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.84rem;
+      font-weight: 900;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.5rem;
+      line-height: 1.18;
+    }
+
+    .step p {
+      margin: 0;
+      color: var(--text);
+    }
+
+    .step.blue {
+      border-top: 8px solid var(--blue);
+    }
+
+    .step.red {
+      border-top: 8px solid var(--red);
+    }
+
+    .step.green {
+      border-top: 8px solid var(--green);
+    }
+
+    .phase-matrix {
+      display: grid;
+      grid-template-columns: 0.78fr 1fr 1fr;
+      margin-top: 18px;
+      border: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    .matrix-row {
+      display: contents;
+    }
+
+    .matrix-row > div {
+      padding: 14px;
+      border-right: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .matrix-row > div:nth-child(3n) {
+      border-right: 0;
+    }
+
+    .matrix-row:last-child > div {
+      border-bottom: 0;
+    }
+
+    .matrix-head > div {
+      background: var(--blue);
+      color: #ffffff;
+      font-weight: 950;
+    }
+
+    .matrix-phase {
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-weight: 900;
+      color: var(--blue);
+      overflow-wrap: anywhere;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      min-height: 220px;
+      padding: 22px;
+      border: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    .card b {
+      display: block;
+      color: var(--blue);
+      font-size: 3rem;
+      line-height: 0.9;
+      margin-bottom: 18px;
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 1.34rem;
+      line-height: 1.22;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .source-flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      margin-top: 18px;
+      border: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    .source-step {
+      min-height: 250px;
+      padding: 18px;
+      border-right: 1px solid var(--ink);
+    }
+
+    .source-step:last-child {
+      border-right: 0;
+    }
+
+    .source-step span {
+      display: inline-block;
+      margin-bottom: 14px;
+      padding: 5px 8px;
+      border: 1px solid var(--ink);
+      color: var(--blue);
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.78rem;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .source-step h3 {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
+      line-height: 1.2;
+    }
+
+    .source-step p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .callout {
+      margin-top: 18px;
+      padding: 20px;
+      border: 1px solid var(--ink);
+      border-left: 10px solid var(--blue);
+      background: #ffffff;
+      color: var(--text);
+      font-size: 1.08rem;
+      font-weight: 800;
+    }
+
+    .term-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .term {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 16px;
+      padding: 18px;
+      border: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    .term strong {
+      color: var(--blue);
+      font-size: 1.18rem;
+      line-height: 1.2;
+    }
+
+    .term p {
+      margin: 0;
+      color: var(--text);
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .compare {
+      border: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    .compare h3 {
+      margin: 0;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--ink);
+      color: #ffffff;
+      background: var(--blue);
+      font-size: 1.18rem;
+    }
+
+    .compare.warn h3 {
+      background: var(--red);
+    }
+
+    .compare ul {
+      margin: 0;
+      padding: 18px 18px 18px 34px;
+      color: var(--text);
+    }
+
+    .compare li + li {
+      margin-top: 8px;
+    }
+
+    .script {
+      padding: 26px;
+      border: 1px solid var(--ink);
+      border-left: 10px solid var(--blue);
+      background: #ffffff;
+      font-size: clamp(1.08rem, 2vw, 1.34rem);
+      line-height: 1.8;
+    }
+
+    details {
+      border: 1px solid var(--ink);
+      background: #ffffff;
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 18px;
+      color: var(--blue);
+      font-weight: 950;
+    }
+
+    .appendix {
+      display: grid;
+      gap: 10px;
+      padding: 0 18px 18px;
+    }
+
+    .appendix a {
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: #ffffff;
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 240ms ease, transform 240ms ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .scene,
+      .poster,
+      .timeline,
+      .cards,
+      .term-grid,
+      .why-grid,
+      .source-flow,
+      .compare-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .poster-cell,
+      .poster-cell:nth-child(3n),
+      .poster-cell:nth-last-child(-n + 3),
+      .step,
+      .step:last-child,
+      .source-step,
+      .source-step:last-child {
+        border-right: 0;
+        border-bottom: 1px solid var(--ink);
+      }
+
+      .poster-cell:last-child,
+      .step:last-child,
+      .source-step:last-child {
+        border-bottom: 0;
+      }
+
+      .poster-cell.wide {
+        grid-column: auto;
+      }
+
+      .phase-matrix {
+        grid-template-columns: 1fr;
+      }
+
+      .matrix-row {
+        display: block;
+      }
+
+      .matrix-row > div,
+      .matrix-row > div:nth-child(3n),
+      .matrix-row:last-child > div {
+        border-right: 0;
+        border-bottom: 1px solid var(--ink);
+      }
+
+      .section-head {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      body {
+        background:
+          linear-gradient(90deg, rgba(216, 220, 226, 0.55) 1px, transparent 1px) 0 0 / 48px 48px,
+          linear-gradient(180deg, rgba(216, 220, 226, 0.38) 1px, transparent 1px) 0 0 / 48px 48px,
+          #ffffff;
+      }
+
+      main {
+        width: min(360px, calc(100vw - 28px));
+        margin-left: 14px;
+        margin-right: auto;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 76px;
+      }
+
+      h1 {
+        font-size: clamp(2rem, 9.6vw, 2.75rem);
+        line-height: 1.05;
+        overflow-wrap: anywhere;
+      }
+
+      h2 {
+        font-size: clamp(1.8rem, 9vw, 2.55rem);
+      }
+
+      .lead {
+        padding-left: 14px;
+        border-left-width: 6px;
+      }
+
+      .hero-card-row,
+      .term {
+        grid-template-columns: 1fr;
+      }
+
+      .poster-cell,
+      .step,
+      .card {
+        min-height: auto;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+  <a class="skip" href="#main">본문으로 이동</a>
+
+  <main id="main">
+    <header class="hero">
+      <div>
+        <span class="eyebrow">AWS Advanced JDBC Wrapper 4.1.0</span>
+        <h1>DB 이사 중, 앱이 예전 주소로 가지 않게 막는 장치</h1>
+        <p class="lead">
+          Blue/Green 전환을 어렵게 만드는 건 DB 자체보다 앱의 연결이다.
+          DB는 새 Green으로 바뀌었는데 앱은 잠깐 예전 Blue 주소를 기억할 수 있다.
+        </p>
+      </div>
+
+      <aside class="hero-card" aria-label="핵심 요약">
+        <div class="hero-card-row">
+          <b>1</b>
+          <span>Blue는 지금 쓰던 DB, Green은 새 DB다.</span>
+        </div>
+        <div class="hero-card-row">
+          <b>2</b>
+          <span>전환 중 앱의 주소록이 잠깐 낡을 수 있다.</span>
+        </div>
+        <div class="hero-card-row">
+          <b>3</b>
+          <span><code>bg</code> 플러그인은 기다리거나 새 주소로 보내준다.</span>
+        </div>
+      </aside>
+    </header>
+
+    <nav class="dock" aria-label="문서 목차">
+      <div class="dock-inner" id="dock"></div>
+    </nav>
+
+    <section id="one-picture" data-title="한 장 요약">
+      <div class="section-head">
+        <div class="num">01</div>
+        <div>
+          <h2>한 장으로 보면 이렇다</h2>
+          <p class="section-lead">
+            이 발표에서 기억할 그림은 하나다. 앱은 DB 주소를 보고 찾아가고,
+            전환 중에는 그 주소가 잠깐 헷갈릴 수 있다.
+          </p>
+        </div>
+      </div>
+
+      <div class="poster reveal">
+        <div class="poster-cell">
+          <span class="label">기존 집</span>
+          <strong class="big blue-text">Blue DB</strong>
+          <p class="desc">앱이 원래 붙어 있던 DB다. 전환 전에는 정상 목적지다.</p>
+        </div>
+        <div class="poster-cell">
+          <span class="label">새 집</span>
+          <strong class="big green-text">Green DB</strong>
+          <p class="desc">전환 후 앱이 사용해야 할 새 DB다.</p>
+        </div>
+        <div class="poster-cell">
+          <span class="label">문제</span>
+          <strong class="big red-text">낡은 주소록</strong>
+          <p class="desc">DB는 바뀌었는데 앱은 잠깐 예전 주소를 기억할 수 있다.</p>
+        </div>
+        <div class="poster-cell wide">
+          <span class="label">bg 플러그인</span>
+          <strong class="big">JDBC 앞의 교통정리 담당</strong>
+          <p class="desc">위험한 순간에는 연결을 잠깐 멈추고, 필요하면 Green 쪽으로 보내준다.</p>
+        </div>
+        <div class="poster-cell">
+          <span class="label">결론</span>
+          <strong class="big blue-text">미리 켜야 함</strong>
+          <p class="desc">전환 전에 켜둬야 Blue와 Green의 위치를 미리 알아둘 수 있다.</p>
+        </div>
+      </div>
+
+      <div class="callout reveal">
+        핵심은 “DB가 바뀌는 순간”이 아니라 “앱이 바뀐 DB를 제대로 찾아가는가”다.
+        bg 플러그인은 이 짧은 혼란 구간을 JDBC 앞에서 줄여주는 안전장치다.
+      </div>
+    </section>
+
+    <section id="scene" data-title="상황 그림">
+      <div class="section-head">
+        <div class="num">02</div>
+        <div>
+          <h2>전환 중 앱은 어디로 가야 할지 헷갈린다</h2>
+          <p class="section-lead">
+            DB 이사로 비유하면, 앱은 주소록을 보고 집을 찾아간다.
+            그런데 이사 직후 주소록이 바로 새 주소로 바뀌지 않을 수 있다.
+          </p>
+        </div>
+      </div>
+
+      <div class="scene reveal">
+        <div class="box blue">
+          <h3>Application</h3>
+          <p>평소처럼 JDBC로 DB에 연결하려고 한다.</p>
+        </div>
+        <div class="route" aria-label="전환 중 연결 흐름">
+          <div class="route-line">1. 앱이 DB 주소를 본다</div>
+          <div class="route-line primary">2. bg 플러그인이 지금 안전한지 확인한다</div>
+          <div class="route-line">3. 기다리거나 Green으로 안내한다</div>
+        </div>
+        <div class="box green">
+          <h3>Green DB</h3>
+          <p>전환 후 앱이 도착해야 하는 새 목적지다.</p>
+        </div>
+      </div>
+
+      <div class="why-grid">
+        <div class="why-item reveal">
+          <strong>왜 헷갈리나 1. DNS가 바로 안 바뀔 수 있음</strong>
+          <p>DB 주소는 결국 IP로 바뀌어야 접속된다. 이 변환 결과가 잠깐 캐시될 수 있다.</p>
+        </div>
+        <div class="why-item reveal">
+          <strong>왜 헷갈리나 2. JVM도 주소를 기억할 수 있음</strong>
+          <p>운영체제나 DNS 서버만의 문제가 아니다. Java 애플리케이션도 조회 결과를 들고 있을 수 있다.</p>
+        </div>
+        <div class="why-item reveal">
+          <strong>왜 헷갈리나 3. 이미 열린 연결이 남아 있을 수 있음</strong>
+          <p>커넥션 풀은 DB 연결을 재사용한다. 전환 중에는 이 연결도 잠깐 정리가 필요하다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="phases" data-title="전환 단계">
+      <div class="section-head">
+        <div class="num">03</div>
+        <div>
+          <h2>단계는 네 장면만 알면 된다</h2>
+          <p class="section-lead">
+            어려운 phase 이름을 먼저 외우지 않아도 된다.
+            발표에서는 아래 네 장면으로 설명하면 충분하다.
+          </p>
+        </div>
+      </div>
+
+      <div class="timeline reveal">
+        <div class="step blue">
+          <span class="phase">CREATED</span>
+          <strong>이사 전</strong>
+          <p>아직 평소처럼 Blue DB를 써도 된다.</p>
+        </div>
+        <div class="step">
+          <span class="phase">PREPARATION</span>
+          <strong>준비 중</strong>
+          <p>플러그인이 Blue와 Green의 위치를 미리 확인한다.</p>
+        </div>
+        <div class="step red">
+          <span class="phase">IN_PROGRESS</span>
+          <strong>실제 이사 중</strong>
+          <p>가장 위험한 순간이다. 새 연결과 쿼리를 잠깐 기다리게 할 수 있다.</p>
+        </div>
+        <div class="step green">
+          <span class="phase">POST</span>
+          <strong>주소 정리 중</strong>
+          <p>Blue 주소로 들어온 요청을 Green 쪽으로 바꿔 보낼 수 있다.</p>
+        </div>
+        <div class="step green">
+          <span class="phase">COMPLETED</span>
+          <strong>이사 완료</strong>
+          <p>정리가 끝난 상태다. 이제 Green을 평소 DB처럼 사용하면 된다.</p>
+        </div>
+      </div>
+
+      <div class="phase-matrix reveal">
+        <div class="matrix-row matrix-head">
+          <div>단계</div>
+          <div>앱 입장에서 보이는 현상</div>
+          <div>bg 플러그인 판단</div>
+        </div>
+        <div class="matrix-row">
+          <div class="matrix-phase">CREATED</div>
+          <div>아직 평소와 거의 같다.</div>
+          <div>상태를 보면서 준비한다.</div>
+        </div>
+        <div class="matrix-row">
+          <div class="matrix-phase">PREPARATION</div>
+          <div>전환 준비가 시작됐다.</div>
+          <div>Blue/Green 배치와 IP 정보를 더 신경 써서 본다.</div>
+        </div>
+        <div class="matrix-row">
+          <div class="matrix-phase">IN_PROGRESS</div>
+          <div>새 연결이나 쿼리가 잠깐 기다릴 수 있다.</div>
+          <div>가장 위험하므로 연결과 실행을 hold한다.</div>
+        </div>
+        <div class="matrix-row">
+          <div class="matrix-phase">POST</div>
+          <div>DB 역할은 넘어갔지만 주소 정리가 남아 있을 수 있다.</div>
+          <div>필요하면 Blue로 가려는 연결을 Green으로 바꾼다.</div>
+        </div>
+        <div class="matrix-row">
+          <div class="matrix-phase">COMPLETED</div>
+          <div>전환이 끝난 상태다.</div>
+          <div>특별한 우회 없이 일반 흐름으로 돌아간다.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="what-plugin-does" data-title="플러그인 역할">
+      <div class="section-head">
+        <div class="num">04</div>
+        <div>
+          <h2>bg 플러그인이 하는 일은 세 가지다</h2>
+          <p class="section-lead">
+            주니어 대상 발표에서는 클래스 이름보다 이 세 가지 행동을 먼저 보여주면 된다.
+          </p>
+        </div>
+      </div>
+
+      <div class="cards">
+        <article class="card reveal">
+          <b>1</b>
+          <h3>상태를 계속 본다</h3>
+          <p>앱이 아무 쿼리를 날리지 않아도 전환 상태는 바뀐다. 그래서 별도 monitor가 계속 확인한다.</p>
+        </article>
+        <article class="card reveal">
+          <b>2</b>
+          <h3>위험하면 잠깐 멈춘다</h3>
+          <p><code>IN_PROGRESS</code> 중에는 새 연결이나 쿼리를 바로 보내지 않을 수 있다.</p>
+        </article>
+        <article class="card reveal">
+          <b>3</b>
+          <h3>새 DB로 안내한다</h3>
+          <p>정리 구간에서는 Blue로 가려는 연결을 Green 쪽으로 바꿔줄 수 있다.</p>
+        </article>
+      </div>
+
+      <div class="source-flow reveal" aria-label="소스 기준 처리 흐름">
+        <div class="source-step">
+          <span>BlueGreenStatusMonitor</span>
+          <h3>감시 담당</h3>
+          <p><code>runMonitoringLoop()</code>에서 상태, topology, IP 정보를 반복해서 모은다.</p>
+        </div>
+        <div class="source-step">
+          <span>BlueGreenStatusProvider</span>
+          <h3>상황판 담당</h3>
+          <p>source와 target에서 올라온 정보를 합쳐 현재 phase와 routing 규칙을 만든다.</p>
+        </div>
+        <div class="source-step">
+          <span>BlueGreenConnectionPlugin</span>
+          <h3>JDBC 입구 담당</h3>
+          <p><code>connectInternal()</code>과 <code>execute()</code>에서 지금 적용할 routing을 찾는다.</p>
+        </div>
+        <div class="source-step">
+          <span>routing/*</span>
+          <h3>행동 담당</h3>
+          <p><code>Suspend*</code>는 기다리게 하고, <code>Substitute*</code>는 다른 목적지로 보낸다.</p>
+        </div>
+      </div>
+
+      <div class="callout reveal">
+        발표에서는 클래스 이름을 다 외울 필요 없다.
+        “감시 담당이 상태를 보고, 상황판 담당이 판단하고, JDBC 입구 담당이 기다리거나 우회시킨다”라고 말하면 된다.
+      </div>
+    </section>
+
+    <section id="words" data-title="헷갈리는 단어">
+      <div class="section-head">
+        <div class="num">05</div>
+        <div>
+          <h2>헷갈리는 단어는 이렇게 읽으면 된다</h2>
+          <p class="section-lead">
+            처음 듣는 사람에게는 영어 용어가 제일 큰 장벽이다.
+            발표에서는 아래 쉬운 말부터 말하고, 괄호로 코드 용어를 붙이면 된다.
+          </p>
+        </div>
+      </div>
+
+      <div class="term-grid">
+        <div class="term reveal">
+          <strong>Wrapper</strong>
+          <p>DB 드라이버 앞에 있는 중간 안내원. 앱과 DB 사이에서 연결을 도와준다.</p>
+        </div>
+        <div class="term reveal">
+          <strong>DNS Cache</strong>
+          <p>앱이 잠깐 들고 있는 주소록. 이 주소록이 늦게 바뀌면 예전 DB로 갈 수 있다.</p>
+        </div>
+        <div class="term reveal">
+          <strong>Stale DNS</strong>
+          <p>바뀌었어야 하는 주소가 아직 예전 IP를 가리키는 상태다.</p>
+        </div>
+        <div class="term reveal">
+          <strong>Topology</strong>
+          <p>DB 자리 배치표. writer, reader, Blue, Green의 위치를 알려준다.</p>
+        </div>
+        <div class="term reveal">
+          <strong>Routing</strong>
+          <p>요청을 어디로 보낼지 정하는 길 안내 규칙이다.</p>
+        </div>
+        <div class="term reveal">
+          <strong>Connection Pool</strong>
+          <p>DB 연결을 매번 새로 만들지 않고 모아뒀다가 재사용하는 공간이다.</p>
+        </div>
+        <div class="term reveal">
+          <strong>Monitor</strong>
+          <p>상태 확인 담당. 전환이 어디까지 왔는지 계속 본다.</p>
+        </div>
+        <div class="term reveal">
+          <strong>Provider</strong>
+          <p>상황판 정리 담당. 여러 상태를 합쳐 현재 판단을 만든다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ops" data-title="운영에서 보이는 것">
+      <div class="section-head">
+        <div class="num">06</div>
+        <div>
+          <h2>운영 중에는 잠깐 멈춘 것처럼 보일 수 있다</h2>
+          <p class="section-lead">
+            이 부분은 장애처럼 보일 수 있어서 미리 설명해두는 게 좋다.
+          </p>
+        </div>
+      </div>
+
+      <div class="cards">
+        <article class="card reveal">
+          <b>A</b>
+          <h3>커넥션 풀이 기다림</h3>
+          <p>전환 중 새 연결을 바로 만들지 않고 잠깐 대기할 수 있다.</p>
+        </article>
+        <article class="card reveal">
+          <b>B</b>
+          <h3>쿼리가 느려 보임</h3>
+          <p>DB가 느린 게 아니라 플러그인이 안전을 위해 실행을 붙잡는 중일 수 있다.</p>
+        </article>
+        <article class="card reveal">
+          <b>C</b>
+          <h3>timeout은 확인 신호</h3>
+          <p>너무 오래 멈추면 전환 지연, 권한, DNS 문제를 확인해야 한다.</p>
+        </article>
+      </div>
+
+      <div class="compare-grid">
+        <div class="compare reveal">
+          <h3>정상적인 switchover hold에 가까운 모습</h3>
+          <ul>
+            <li>전환 시간대와 지연 시간이 겹친다.</li>
+            <li>잠깐 대기 후 Green으로 정상 연결된다.</li>
+            <li>일부 connect나 execute가 같은 구간에서 느려진다.</li>
+          </ul>
+        </div>
+        <div class="compare warn reveal">
+          <h3>장애를 의심해야 하는 모습</h3>
+          <ul>
+            <li>timeout이 계속 반복되고 회복되지 않는다.</li>
+            <li>Green 쪽 권한, 인증서, 네트워크 접근이 실패한다.</li>
+            <li>전환이 끝났는데도 앱이 계속 Blue IP로 붙으려 한다.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="script" data-title="발표 스크립트">
+      <div class="section-head">
+        <div class="num">07</div>
+        <div>
+          <h2>이렇게 말하면 된다</h2>
+          <p class="section-lead">
+            소스 코드 설명 전에 이 스크립트로 전체 그림을 잡아주면 된다.
+          </p>
+        </div>
+      </div>
+
+      <div class="script reveal">
+        Blue/Green 전환은 DB 이사라고 보면 됩니다.
+        Blue는 원래 쓰던 DB, Green은 새로 넘어갈 DB입니다.
+        문제는 DB는 새 집으로 이사했는데 애플리케이션의 주소록이 잠깐 예전 집을 가리킬 수 있다는 점입니다.
+        그래서 <code>bg</code> 플러그인은 JDBC 앞에서 교통정리를 합니다.
+        위험한 순간에는 잠깐 기다리게 하고, 전환 후 정리 구간에는 Green 쪽으로 연결을 바꿔줍니다.
+        이때 커넥션 풀이 잠깐 멈춘 것처럼 보일 수 있는데, 반드시 장애라는 뜻은 아닙니다.
+        전환 중 잘못된 DB로 쓰기 요청이 가는 것을 막기 위해 의도적으로 기다리는 구간일 수 있습니다.
+      </div>
+
+      <div class="callout reveal">
+        질문이 나오면 이렇게 답하면 된다.
+        “이 플러그인은 DB를 바꾸는 도구가 아니라, DB가 바뀌는 동안 앱의 JDBC 연결이 엉뚱한 곳으로 가지 않게 도와주는 도구입니다.”
+      </div>
+    </section>
+
+    <section id="appendix" data-title="부록">
+      <div class="section-head">
+        <div class="num">08</div>
+        <div>
+          <h2>더 깊게 볼 사람만 보는 소스</h2>
+          <p class="section-lead">
+            발표 본문에서는 이 내용을 자세히 설명하지 않아도 된다.
+            질문이 나오면 아래 파일을 열어보면 된다.
+          </p>
+        </div>
+      </div>
+
+      <details>
+        <summary>소스 파일과 읽는 순서 보기</summary>
+        <div class="appendix">
+          <a href="https://github.com/aws/aws-advanced-jdbc-wrapper/blob/4.1.0/wrapper/src/main/java/software/amazon/jdbc/plugin/bluegreen/BlueGreenPhase.java">1. BlueGreenPhase.java - CREATED, PREPARATION, IN_PROGRESS, POST, COMPLETED 이름 확인</a>
+          <a href="https://github.com/aws/aws-advanced-jdbc-wrapper/blob/4.1.0/wrapper/src/main/java/software/amazon/jdbc/plugin/bluegreen/BlueGreenStatusMonitor.java">2. BlueGreenStatusMonitor.java - runMonitoringLoop(), collectStatus()에서 상태 수집 확인</a>
+          <a href="https://github.com/aws/aws-advanced-jdbc-wrapper/blob/4.1.0/wrapper/src/main/java/software/amazon/jdbc/plugin/bluegreen/BlueGreenStatusProvider.java">3. BlueGreenStatusProvider.java - getStatusOfInProgress(), getStatusOfPost()에서 routing 생성 확인</a>
+          <a href="https://github.com/aws/aws-advanced-jdbc-wrapper/blob/4.1.0/wrapper/src/main/java/software/amazon/jdbc/plugin/bluegreen/BlueGreenConnectionPlugin.java">4. BlueGreenConnectionPlugin.java - connectInternal(), execute()에서 routing 적용 확인</a>
+          <a href="https://github.com/aws/aws-advanced-jdbc-wrapper/blob/4.1.0/wrapper/src/main/java/software/amazon/jdbc/plugin/bluegreen/routing/SuspendConnectRouting.java">5. SuspendConnectRouting.java - 새 연결을 잠깐 기다리게 하는 코드 확인</a>
+          <a href="https://github.com/aws/aws-advanced-jdbc-wrapper/blob/4.1.0/wrapper/src/main/java/software/amazon/jdbc/plugin/bluegreen/routing/SuspendExecuteRouting.java">6. SuspendExecuteRouting.java - 기존 연결의 쿼리 실행을 잠깐 기다리게 하는 코드 확인</a>
+          <a href="https://github.com/aws/aws-advanced-jdbc-wrapper/blob/4.1.0/wrapper/src/main/java/software/amazon/jdbc/plugin/bluegreen/routing/SubstituteConnectRouting.java">7. SubstituteConnectRouting.java - 대응되는 Green 노드로 연결을 바꾸는 코드 확인</a>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <script>
+    const progress = document.getElementById("progress");
+    const sections = [...document.querySelectorAll("section[id]")];
+    const dock = document.getElementById("dock");
+
+    sections.forEach((section, index) => {
+      const link = document.createElement("a");
+      link.href = `#${section.id}`;
+      link.textContent = `${index + 1}. ${section.dataset.title}`;
+      dock.appendChild(link);
+    });
+
+    const links = [...dock.querySelectorAll("a")];
+
+    function updateProgress() {
+      const height = document.documentElement.scrollHeight - window.innerHeight;
+      const ratio = height <= 0 ? 0 : window.scrollY / height;
+      progress.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
+    }
+
+    const activeObserver = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!visible) return;
+      links.forEach((link) => {
+        link.classList.toggle("active", link.getAttribute("href") === `#${visible.target.id}`);
+      });
+    }, { rootMargin: "-20% 0px -66% 0px", threshold: [0.12, 0.3, 0.55] });
+
+    sections.forEach((section) => activeObserver.observe(section));
+
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("visible");
+        revealObserver.unobserve(entry.target);
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll(".reveal").forEach((element) => revealObserver.observe(element));
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    window.addEventListener("resize", updateProgress);
+    updateProgress();
+  </script>
+</body>
+</html>
