@@ -926,6 +926,38 @@
           <p>커넥션 풀은 DB 연결을 재사용한다. 전환 중에는 이 연결도 잠깐 정리가 필요하다.</p>
         </div>
       </div>
+
+      <div class="callout reveal">
+        그래서 Blue/Green을 만든 뒤 switchover 전에 잠깐 기다리라는 말이 나온다.
+        이 시간 동안 wrapper는 전환이 시작되기 전에 안정적인 DB 지도와 주소록을 미리 만들어둔다.
+      </div>
+
+      <div class="why-grid">
+        <div class="why-item reveal">
+          <strong>준비 1. Source/Target monitor를 둘 다 띄움</strong>
+          <p><code>BlueGreenStatusProvider</code>가 Blue 쪽과 Green 쪽 monitor를 각각 시작한다.</p>
+        </div>
+        <div class="why-item reveal">
+          <strong>준비 2. 시작 시점 topology를 저장</strong>
+          <p><code>collectTopology()</code>가 writer, reader, cluster endpoint 같은 DB 자리 배치표를 모은다.</p>
+        </div>
+        <div class="why-item reveal">
+          <strong>준비 3. 시작 시점 IP를 저장</strong>
+          <p><code>collectHostIpAddresses()</code>가 host 이름을 IP로 풀어서 전환 전 주소록을 만든다.</p>
+        </div>
+        <div class="why-item reveal">
+          <strong>준비 4. Blue와 Green을 짝지음</strong>
+          <p><code>updateCorrespondingNodes()</code>가 Blue writer/reader와 Green writer/reader 대응표를 만든다.</p>
+        </div>
+        <div class="why-item reveal">
+          <strong>준비 5. 전환 감지 기준을 잡음</strong>
+          <p>시작 IP와 현재 IP를 비교해야 POST에서 DNS가 바뀌었는지, Green endpoint가 사라졌는지 알 수 있다.</p>
+        </div>
+        <div class="why-item reveal">
+          <strong>결론. 기다리는 시간은 빈 시간이 아님</strong>
+          <p>이때 만든 지도 덕분에 <code>IN_PROGRESS</code>에서는 기다리고, <code>POST</code>에서는 Green으로 우회할 수 있다.</p>
+        </div>
+      </div>
     </section>
 
     <section id="phases" data-title="전환 단계">
