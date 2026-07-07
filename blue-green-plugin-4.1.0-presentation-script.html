@@ -552,15 +552,15 @@
       <aside class="summary" aria-label="대본 사용법">
         <div>
           <b>1</b>
-          <p>그대로 읽어도 되는 문장으로 작성했다.</p>
+          <p>슬라이드 1번부터 12번까지 순서대로 읽으면 된다.</p>
         </div>
         <div>
           <b>2</b>
-          <p>각 구간마다 왜 이 말을 하는지 같이 적었다.</p>
+          <p>각 슬라이드마다 말할 문장과 넘김 멘트를 넣었다.</p>
         </div>
         <div>
           <b>3</b>
-          <p>마지막에 스스로 질문한 검토 결과와 예상 Q&A를 넣었다.</p>
+          <p>뒤쪽에는 배경 설명과 예상 Q&A를 참고용으로 남겼다.</p>
         </div>
       </aside>
     </header>
@@ -574,6 +574,303 @@
       <a class="primary" href="blue-green-plugin-4.1.0-confluence-tech-share.html">요약 발표자료로 이동</a>
       <a href="https://github.com/qkrtkdwns3410/blue-green-jdbc-wrapper-tech-share">GitHub repo 보기</a>
     </div>
+
+    <section id="slide-script" data-title="슬라이드별 대본">
+      <div class="section-head">
+        <div class="num">00</div>
+        <div>
+          <h2>슬라이드 순서대로 읽는 발표 대본</h2>
+          <p class="section-lead">
+            실제 발표에서는 이 섹션을 우선 사용한다. 아래 번호는 발표 슬라이드 번호와 맞춰두었다.
+            한 슬라이드에서 말할 핵심 문장, 너무 깊게 들어가지 않아야 할 선, 다음 슬라이드로 넘기는 말을 같이 적었다.
+          </p>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 1. 오프닝</span>
+          <span>약 1분</span>
+        </div>
+        <div class="script-body">
+          <p>
+            오늘은 AWS Advanced JDBC Wrapper 4.1.0의 Blue/Green 플러그인을 보겠습니다.
+            제목은 조금 길지만, 핵심은 어렵지 않습니다. DB가 이사하는 동안 애플리케이션이 예전 주소로 가지 않게
+            JDBC 앞에서 막아주는 장치라고 보면 됩니다.
+          </p>
+          <p>
+            Blue/Green 전환은 DB 서버 안에서만 일어나는 일이 아닙니다. 전환 순간에는 애플리케이션의 연결도 같이 흔들릴 수 있습니다.
+            그래서 오늘은 DB 쪽 기능 설명보다, 애플리케이션이 그 순간에 무엇을 보고, wrapper가 어디서 개입하는지 중심으로 보겠습니다.
+          </p>
+          <div class="note">
+            넘김 멘트: 먼저 전체 발표를 관통하는 한 문장부터 잡고 가겠습니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 2. 한 문장</span>
+          <span>약 1분</span>
+        </div>
+        <div class="script-body">
+          <p>
+            오늘 발표의 기준 문장은 이것입니다. DB는 Green으로 갔는데, 앱은 잠깐 Blue 주소를 볼 수 있다.
+            이 한 문장만 이해하면 뒤에 나오는 monitor, provider, routing 같은 클래스 이름도 훨씬 덜 어렵습니다.
+          </p>
+          <p>
+            왜 이런 일이 생기냐면, 애플리케이션은 DB에 붙을 때 주소를 바로 매번 새로 확인하지 않을 수 있습니다.
+            DNS TTL, JVM DNS cache, 커넥션 풀 같은 이유로 잠깐 예전 주소를 기억할 수 있습니다.
+            이미 DB는 Green으로 넘어갔는데, 앱 입장에서는 주소록이 아직 Blue를 가리키는 상황입니다.
+          </p>
+          <div class="note">
+            넘김 멘트: 이 문장을 그림으로 바꾸면 bg 플러그인의 역할이 바로 보입니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 3. 문제 그림</span>
+          <span>약 1분</span>
+        </div>
+        <div class="script-body">
+          <p>
+            애플리케이션은 평소처럼 JDBC로 DB에 연결하려고 합니다. 그런데 전환 중에는 목적지가 바뀌고 있습니다.
+            이때 <code>bg</code> 플러그인은 JDBC 호출이 지나가는 중간에서 현재 상태가 안전한지 확인합니다.
+          </p>
+          <p>
+            위험한 순간이면 바로 보내지 않고 잠깐 기다리게 할 수 있고, 주소 정리가 덜 끝난 구간이면 대응되는 Green host나 IP로 바꿔 보낼 수 있습니다.
+            여기서 중요한 점은, bg 플러그인이 DB 전환을 직접 수행하는 것이 아니라 애플리케이션 연결이 잘못된 곳으로 가는 시간을 줄인다는 것입니다.
+          </p>
+          <div class="note">
+            발표 팁: DNS cache와 JVM cache를 깊게 설명하기보다 “앱이 잠깐 들고 있는 낡은 주소록”이라고 먼저 말한다.
+            넘김 멘트: 그래서 switchover 전에 기다리라는 시간이 그냥 쉬는 시간이 아닙니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 4. 스위치오버 전 대기</span>
+          <span>약 2분</span>
+        </div>
+        <div class="script-body">
+          <p>
+            Green/Blue 환경을 만든 뒤 바로 switchover하지 말고 조금 기다리라는 안내가 있습니다.
+            이 시간은 빈 시간이 아니라 wrapper 입장에서는 예열 시간입니다.
+          </p>
+          <p>
+            이때 Source, 즉 현재 운영 중인 Blue 쪽 monitor와 Target, 즉 앞으로 넘어갈 Green 쪽 monitor가 둘 다 뜹니다.
+            monitor는 상태만 보는 것이 아니라 topology와 host IP 정보도 주기적으로 확인합니다.
+            쉽게 말하면 현재 DB 배치도와 주소록을 미리 모아두는 것입니다.
+          </p>
+          <p>
+            그 다음 provider 쪽에서는 Blue writer는 어떤 Green writer와 대응되는지, Blue reader는 어떤 Green reader와 대응되는지 매핑합니다.
+            그래서 나중에 POST 구간에서 Blue 주소로 요청이 들어와도 “이 요청은 대응되는 Green으로 보내야 한다”는 판단을 할 수 있습니다.
+            이 준비가 없으면 전환이 시작된 뒤에야 지도를 만들게 되므로, 가장 위험한 순간에 판단 근거가 부족해집니다.
+          </p>
+          <div class="note">
+            핵심 문장: switchover 전 대기 시간은 wrapper가 Source/Target을 감시하고, 시작 topology/IP를 모으고, Blue와 Green 대응표를 만드는 시간이다.
+            넘김 멘트: 이렇게 모은 상태는 phase별 행동으로 이어집니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 5. Phase</span>
+          <span>약 1분 30초</span>
+        </div>
+        <div class="script-body">
+          <p>
+            Phase는 전환 작업의 장면 이름입니다. 외워야 하는 enum이라기보다, 지금 이사가 어느 장면인지 알려주는 표지판이라고 보면 됩니다.
+          </p>
+          <p>
+            <code>CREATED</code>는 이사 예약입니다. 아직 평소처럼 Blue를 써도 됩니다.
+            <code>PREPARATION</code>은 준비 중입니다. 전환 준비가 시작됐고 wrapper도 상태 변화를 더 신경 써서 봅니다.
+            <code>IN_PROGRESS</code>는 실제 이사 중입니다. 이때는 잘못 연결하는 것보다 잠깐 기다리는 편이 안전합니다.
+          </p>
+          <p>
+            <code>POST</code>는 DB 역할은 넘어갔지만 주소 정리가 남은 구간입니다. 이때는 Blue로 들어온 요청을 Green으로 바꿔 보내는 우회가 중요합니다.
+            <code>COMPLETED</code>는 정리가 끝나서 일반 연결 흐름으로 돌아가는 단계입니다.
+          </p>
+          <div class="note">
+            발표 팁: 다섯 phase를 같은 비중으로 설명하지 말고, IN_PROGRESS는 “기다림”, POST는 “우회”라고 찍어준다.
+            넘김 멘트: 이제 이 phase를 실제 소스가 어떻게 읽고 적용하는지 보겠습니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 6. 소스 흐름</span>
+          <span>약 2분</span>
+        </div>
+        <div class="script-body">
+          <p>
+            소스는 네 역할로 나눠서 보면 됩니다. 감시, 판단, 적용, 행동입니다.
+            먼저 <code>BlueGreenStatusMonitor</code>가 DB에 주기적으로 붙어서 상태, topology, IP 정보를 봅니다.
+            앱에서 쿼리가 없더라도 switchover 상태는 바뀔 수 있으니 별도 monitor thread가 필요합니다.
+          </p>
+          <p>
+            그 다음 <code>BlueGreenStatusProvider</code>가 Source와 Target monitor가 올린 정보를 합쳐서 현재 phase와 routing 규칙을 만듭니다.
+            단순히 status 문자열만 믿는 것이 아니라, topology와 IP 변화, 대응 노드 정보까지 같이 봅니다.
+          </p>
+          <p>
+            <code>BlueGreenConnectionPlugin</code>은 실제 JDBC의 <code>connect</code>와 <code>execute</code> 입구에 붙어 있습니다.
+            그리고 마지막으로 routing 클래스들이 실제 행동을 합니다.
+            <code>Suspend*</code> 계열은 기다리게 하고, <code>Substitute*</code> 계열은 목적지를 바꿔 보냅니다.
+          </p>
+          <div class="note">
+            핵심 문장: Monitor가 보고, Provider가 판단하고, Plugin이 입구에서 적용하고, Routing이 실제로 기다리거나 우회한다.
+            넘김 멘트: 이제 가장 위험한 IN_PROGRESS에서 어떤 행동을 하는지 보겠습니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 7. IN_PROGRESS</span>
+          <span>약 1분 30초</span>
+        </div>
+        <div class="script-body">
+          <p>
+            <code>IN_PROGRESS</code>는 실제 이사 중입니다. 이때는 연결을 잘못 보내면 더 큰 문제가 될 수 있으니,
+            wrapper는 일부 JDBC 흐름을 잠깐 붙잡을 수 있습니다.
+          </p>
+          <p>
+            새 커넥션을 만들려고 하면 <code>SuspendConnectRouting</code>이 phase가 바뀔 때까지 기다립니다.
+            이미 잡혀 있는 커넥션에서 쿼리를 실행하려고 하면 <code>SuspendExecuteRouting</code>이 실행 흐름을 잠깐 기다리게 할 수 있습니다.
+            그래서 운영 중에는 커넥션 풀이 순간적으로 멈춘 것처럼 보이거나, 쿼리가 갑자기 느려진 것처럼 보일 수 있습니다.
+          </p>
+          <p>
+            단, 무한정 기다리지는 않습니다. timeout 안에 phase가 바뀌지 않으면 예외가 나올 수 있습니다.
+            그래서 이 구간은 “장애”라고 바로 단정하기보다, switchover 시간대와 겹치는 정상 hold인지 먼저 봐야 합니다.
+          </p>
+          <div class="note">
+            넘김 멘트: 전환이 실제로 넘어간 뒤에는 기다리는 것보다 주소를 바꿔 보내는 일이 더 중요해집니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 8. POST</span>
+          <span>약 1분 30초</span>
+        </div>
+        <div class="script-body">
+          <p>
+            <code>POST</code>는 DB 역할은 Green으로 넘어갔지만, 주변 주소 정리가 아직 남아 있는 구간입니다.
+            그래서 이때의 핵심은 “계속 기다리기”가 아니라 “올바른 Green으로 우회하기”입니다.
+          </p>
+          <p>
+            <code>SubstituteConnectRouting</code>은 Blue host로 들어온 연결 요청을 보고,
+            미리 만들어 둔 Blue to Green 대응표를 이용해 대응되는 Green host나 IP로 바꿔 보낼 수 있습니다.
+            이게 가능한 이유가 앞에서 말한 switchover 전 예열 시간입니다.
+          </p>
+          <p>
+            쉽게 말하면, 앱은 아직 예전 주소를 들고 요청했지만 wrapper가 중간에서 “지금은 여기로 가야 한다”고 목적지를 고쳐주는 것입니다.
+          </p>
+          <div class="note">
+            넘김 멘트: 여기까지 보면 운영에서 보이는 현상도 조금 다르게 해석할 수 있습니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 9. 운영 관점</span>
+          <span>약 1분 30초</span>
+        </div>
+        <div class="script-body">
+          <p>
+            운영에서 제일 헷갈리는 부분은 “잠깐 느려진 것”과 “진짜 장애”를 구분하는 것입니다.
+            switchover 시간대에 connect나 execute가 잠깐 밀리고, 이후 Green으로 정상 연결된다면 wrapper가 의도적으로 hold한 것일 수 있습니다.
+          </p>
+          <p>
+            반대로 timeout이 계속 반복되거나, Green으로 인증이 안 되거나, 네트워크가 막혀 있거나,
+            완료 후에도 계속 Blue IP로 붙으려 한다면 확인이 필요합니다.
+            즉, bg 플러그인은 모든 장애를 숨기는 도구가 아니라 전환 중 짧은 혼란 구간을 줄여주는 도구입니다.
+          </p>
+          <div class="note">
+            핵심 문장: 잠깐 hold는 정상 동작일 수 있지만, 반복 timeout은 확인 신호다.
+            넘김 멘트: 발표 후 직접 소스를 볼 사람을 위해 읽는 순서를 정리하겠습니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 10. 소스 읽는 순서</span>
+          <span>약 1분</span>
+        </div>
+        <div class="script-body">
+          <p>
+            소스를 직접 볼 때는 처음부터 모든 클래스를 열기보다 순서를 잡는 것이 좋습니다.
+            먼저 <code>BlueGreenPhase</code>로 phase 이름을 봅니다. 그래야 CREATED, PREPARATION, IN_PROGRESS, POST, COMPLETED가 코드에서 어떤 기준인지 감이 잡힙니다.
+          </p>
+          <p>
+            그 다음 <code>BlueGreenStatusMonitor</code>를 보면 상태, topology, IP를 어떻게 수집하는지 볼 수 있습니다.
+            이후 <code>BlueGreenStatusProvider</code>를 보면 monitor가 올린 정보를 어떻게 합치고, 대응 노드와 routing 규칙을 만드는지 볼 수 있습니다.
+            마지막으로 <code>BlueGreenConnectionPlugin</code>과 routing 클래스들을 보면 connect와 execute에서 실제로 어떻게 멈추고 우회하는지 연결됩니다.
+          </p>
+          <div class="note">
+            넘김 멘트: 마지막으로 발표 중 나올 수 있는 질문 세 개만 먼저 정리하겠습니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 11. 질문 방어</span>
+          <span>약 1분 30초</span>
+        </div>
+        <div class="script-body">
+          <p>
+            첫 번째 질문은 “bg 플러그인이 DB 전환을 직접 하나요?”입니다. 답은 아닙니다.
+            switchover 자체는 AWS RDS의 Blue/Green 전환 기능이 수행하고, wrapper는 그 전환 중 애플리케이션 연결을 안전하게 다룹니다.
+          </p>
+          <p>
+            두 번째 질문은 “왜 미리 켜야 하나요?”입니다.
+            전환이 시작된 뒤에 켜면 시작 topology, 시작 IP, Source와 Target의 대응 관계를 충분히 모으기 어렵습니다.
+            그래서 wrapper가 위험한 순간에 판단하려면 전환 전에 이미 켜져 있어야 합니다.
+          </p>
+          <p>
+            세 번째 질문은 “느려지면 장애인가요?”입니다.
+            전환 시간대에 잠깐 hold되는 것은 정상 동작일 수 있습니다.
+            하지만 timeout이 계속 반복되거나 Green 접속 자체가 실패하면 권한, 네트워크, DNS, 설정을 확인해야 합니다.
+          </p>
+          <div class="note">
+            넘김 멘트: 이제 한 문장으로 정리하고 마무리하겠습니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="script-block reveal">
+        <div class="script-title">
+          <span>슬라이드 12. 마무리</span>
+          <span>약 1분</span>
+        </div>
+        <div class="script-body">
+          <p>
+            정리하면, <code>bg</code> 플러그인은 DB 전환을 대신하는 도구가 아닙니다.
+            전환 중 애플리케이션이 보는 접속 주소와 연결 상태의 흔들림을 JDBC 층에서 줄여주는 안전장치입니다.
+          </p>
+          <p>
+            오늘 내용에서 하나만 가져가면 됩니다. Blue/Green 전환은 DB만 바뀌는 일이 아니라, 애플리케이션 연결도 같이 흔들릴 수 있는 이벤트입니다.
+            그래서 wrapper는 미리 상태를 보고, 전환 중에는 잠깐 기다리게 하고, 주소 정리 구간에서는 Green으로 우회시킵니다.
+          </p>
+          <p>
+            이 관점으로 보면 커넥션 풀이 전환 중 잠깐 멈춰 보이는 이유, switchover 전에 wrapper를 미리 켜야 하는 이유,
+            POST 단계가 필요한 이유를 하나의 흐름으로 이해할 수 있습니다.
+          </p>
+          <div class="note">
+            마지막 문장은 천천히: bg 플러그인은 switchover를 하는 도구가 아니라, switchover 중 앱 연결을 안전하게 다루는 도구다.
+          </div>
+        </div>
+      </div>
+    </section>
 
     <section id="principle" data-title="발표 원칙">
       <div class="section-head">
@@ -1026,8 +1323,8 @@
         <div>
           <h2>처음부터 끝까지 읽는 전체 대본</h2>
           <p class="section-lead">
-            발표 직전에는 아래 블록만 읽으면서 리허설하면 된다.
-            앞 섹션들은 왜 그렇게 말하는지 이해하기 위한 설명이다.
+            실제 발표는 맨 앞의 슬라이드별 대본을 우선 사용한다.
+            아래 블록은 흐름을 한 번에 읽어보고 싶을 때 쓰는 백업 원고다.
           </p>
         </div>
       </div>
